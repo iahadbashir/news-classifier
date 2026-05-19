@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  app:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: news-classifier-app
+    ports:
+      - "8501:8501"
+    volumes:
+      # Mount the current directory for hot-reloading
+      - ./:/app
+      # Anonymous volumes to prevent host dependencies from overriding container directories
+      - /app/venv/
+      - /app/__pycache__/
+      - /app/.pytest_cache/
+    environment:
+      - PYTHONUNBUFFERED=1
+    # Run the development server with watch mode enabled
+    command: streamlit run app/streamlit_app.py --server.port=8501 --server.address=0.0.0.0 --server.runOnSave=true

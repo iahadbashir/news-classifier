@@ -1,0 +1,8 @@
+saved_models/
+data/raw/
+__pycache__
+.env
+venv/
+*.pkl
+.DS_Store
+.pytest_cache/

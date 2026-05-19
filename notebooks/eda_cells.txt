@@ -1,0 +1,136 @@
+# MARKDOWN CELL
+# # News Classifier EDA
+# Exploratory Data Analysis for AG News and WELFake datasets.
+
+# CELL 1
+import os
+import warnings
+warnings.filterwarnings('ignore')
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+try:
+    from wordcloud import WordCloud
+except ImportError:
+    print("WordCloud not installed. Install with: pip install wordcloud")
+
+plt.style.use('seaborn-v0_8-whitegrid')
+plt.rcParams['figure.figsize'] = (10, 6)
+# set seed
+import numpy as np
+np.random.seed(42)
+
+# Ensure figures directory exists
+os.makedirs('../reports/figures', exist_ok=True)
+
+# CELL 2
+ag_news = pd.read_csv('../data/samples/ag_news_sample.csv')
+welfake = pd.read_csv('../data/samples/welfake_sample.csv')
+
+print(f"AG News Shape: {ag_news.shape}")
+print(f"WELFake Shape: {welfake.shape}")
+print("\nAG News Head:")
+display(ag_news.head(2))
+print("\nWELFake Head:")
+display(welfake.head(2))
+
+# MARKDOWN CELL
+# ## Topic Distribution in AG News
+
+# CELL 3
+plt.figure()
+ax = sns.countplot(data=ag_news, x='label_name', order=ag_news['label_name'].value_counts().index, palette='viridis')
+plt.title("Topic Class Distribution — AG News")
+plt.xlabel("Topic")
+plt.ylabel("Count")
+
+# Add counts on bars
+for p in ax.patches:
+    ax.annotate(f'{int(p.get_height())}', (p.get_x() + p.get_width() / 2., p.get_height()),
+                ha='center', va='center', xytext=(0, 5), textcoords='offset points')
+
+plt.savefig('../reports/figures/ag_news_distribution.png', bbox_inches='tight')
+plt.show()
+
+# MARKDOWN CELL
+# ## Article Length Distribution
+
+# CELL 4
+ag_news['text_len'] = ag_news['text'].apply(lambda x: len(str(x)))
+welfake['text_len'] = welfake['text'].apply(lambda x: len(str(x)))
+
+plt.figure()
+sns.histplot(ag_news['text_len'], bins=30, color='blue', alpha=0.5, label='AG News', kde=True)
+sns.histplot(welfake['text_len'], bins=30, color='red', alpha=0.5, label='WELFake', kde=True)
+plt.title("Article Length Distribution")
+plt.xlabel("Number of Characters")
+plt.ylabel("Frequency")
+plt.xlim(0, 10000) # cap x limit for better visibility as some articles might be extremely long
+plt.legend()
+plt.savefig('../reports/figures/article_length_distribution.png', bbox_inches='tight')
+plt.show()
+
+# MARKDOWN CELL
+# ## Real vs Fake Distribution in WELFake
+
+# CELL 5
+plt.figure()
+counts = welfake['label_name'].value_counts()
+plt.pie(counts, labels=counts.index, autopct='%1.1f%%', colors=['#ff9999','#66b3ff'], startangle=90)
+plt.title("Real vs Fake Distribution — WELFake")
+plt.savefig('../reports/figures/welfake_distribution.png', bbox_inches='tight')
+plt.show()
+
+# MARKDOWN CELL
+# ## Top TF-IDF Features by Topic (AG News)
+
+# CELL 6
+topics = ag_news['label_name'].unique()
+fig, axes = plt.subplots(2, 2, figsize=(15, 12))
+fig.suptitle("Top TF-IDF Features by Topic", fontsize=16)
+
+vectorizer = TfidfVectorizer(max_features=1000, stop_words='english')
+
+for idx, topic in enumerate(topics):
+    topic_texts = ag_news[ag_news['label_name'] == topic]['text']
+    tfidf_matrix = vectorizer.fit_transform(topic_texts)
+    
+    # Get mean tfidf score for each feature
+    feature_names = vectorizer.get_feature_names_out()
+    mean_scores = tfidf_matrix.mean(axis=0).A1
+    
+    # Top 15 features
+    top_indices = mean_scores.argsort()[-15:][::-1]
+    top_features = [feature_names[i] for i in top_indices]
+    top_scores = mean_scores[top_indices]
+    
+    row = idx // 2
+    col = idx % 2
+    ax = axes[row, col]
+    
+    sns.barplot(x=top_scores, y=top_features, ax=ax, palette='mako')
+    ax.set_title(f"Topic: {topic}")
+    ax.set_xlabel("Mean TF-IDF Score")
+
+plt.tight_layout()
+plt.savefig('../reports/figures/top_tfidf_features.png', bbox_inches='tight')
+plt.show()
+
+# MARKDOWN CELL
+# ## Text Length vs Authenticity (WELFake)
+
+# CELL 7
+plt.figure()
+sns.boxplot(data=welfake, x='label_name', y='text_len', palette=['#ff9999','#66b3ff'])
+plt.title("Text Length by Authenticity — WELFake")
+plt.xlabel("Label")
+plt.ylabel("Article Length (Characters)")
+plt.ylim(0, 15000) # cap y limit to filter extreme outliers
+plt.savefig('../reports/figures/text_length_boxplot.png', bbox_inches='tight')
+plt.show()
+
+# CELL 8
+print("All figures successfully saved to reports/figures/")
